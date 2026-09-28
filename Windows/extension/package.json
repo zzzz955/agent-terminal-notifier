@@ -1,0 +1,38 @@
+{
+  "name": "agent-terminal-notifier",
+  "displayName": "Agent Terminal Notifier",
+  "description": "Windows agent notifications that focus the originating terminal",
+  "version": "0.1.0",
+  "publisher": "local-tools",
+  "engines": { "vscode": "^1.95.0" },
+  "categories": ["Other"],
+  "extensionKind": ["ui"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "scripts": {
+    "compile": "tsc -p .",
+    "test": "npm run compile && node --test test/*.test.cjs",
+    "package": "vsce package --no-dependencies --allow-missing-repository --skip-license -o ../dist/agent-terminal-notifier.vsix"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "1.95.0",
+    "@vscode/vsce": "^3.0.0",
+    "smol-toml": "^1.3.0",
+    "typescript": "^5.7.0"
+  },
+  "contributes": {
+    "commands": [
+      { "command": "agentNotifier.test", "title": "Agent Notifier: Test Active Terminal" },
+      { "command": "agentNotifier.status", "title": "Agent Notifier: Show Registered Terminals" }
+    ],
+    "configuration": {
+      "title": "Agent Terminal Notifier",
+      "properties": {
+        "agentNotifier.sound": { "type": "boolean", "default": true, "description": "Play an event-specific WAV sound." },
+        "agentNotifier.flash": { "type": "boolean", "default": true, "description": "Flash the VSCode taskbar button when its window is unfocused." },
+        "agentNotifier.soundDirectory": { "type": "string", "default": "", "description": "Directory containing completed.wav, attention.wav, blocked.wav and error.wav. Empty uses installed defaults." }
+      }
+    }
+  }
+}

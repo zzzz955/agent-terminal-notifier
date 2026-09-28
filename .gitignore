@@ -1,0 +1,7 @@
+Windows/extension/node_modules/
+Windows/extension/out/
+Windows/notifier/bin/
+Windows/notifier/obj/
+Windows/dist/
+*.user
+*.log
