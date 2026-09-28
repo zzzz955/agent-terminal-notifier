@@ -29,6 +29,10 @@ Claude Code hook ──────────────┼→ Windows helper
 
 ## 빌드 → 검증 → 설치
 
+**`Windows/apply.bat`를 더블클릭하면 빌드·검증·설치까지 실행합니다.** 어느 디렉터리에서 실행해도 BAT 파일 위치를 기준으로 파이프라인을 찾으며, 완료/실패 후 창이 유지됩니다. 관리자 권한은 필요하지 않습니다.
+
+ARM64 PC에서는 저장소 루트에서 `Windows\apply.bat -Runtime win-arm64`를 실행하세요.
+
 저장소 루트에서:
 
 ```powershell
