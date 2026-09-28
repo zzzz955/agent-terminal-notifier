@@ -19,7 +19,7 @@ Get-ChildItem -LiteralPath $PSScriptRoot,(Join-Path $windowsRoot 'examples') -Fi
     $syntaxFailures += $parseErrors
 }
 if ($syntaxFailures.Count) { throw ($syntaxFailures | Out-String) }
-& (Join-Path $PSScriptRoot 'sounds.ps1') -Directory (Join-Path $dist 'sounds')
+& (Join-Path $PSScriptRoot 'sounds.ps1') -Directory (Join-Path $dist 'sounds') -ForceDefaults
 Invoke-Checked 'node' @((Join-Path $PSScriptRoot 'verify-sounds.cjs'), (Join-Path $dist 'sounds'))
 Push-Location $extensionRoot
 try {

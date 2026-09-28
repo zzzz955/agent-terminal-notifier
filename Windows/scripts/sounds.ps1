@@ -1,32 +1,32 @@
-param([Parameter(Mandatory=$true)][string]$Directory)
+param([Parameter(Mandatory=$true)][string]$Directory, [switch]$ForceDefaults)
 $ErrorActionPreference = 'Stop'
 New-Item -ItemType Directory -Path $Directory -Force | Out-Null
-# Generated tones: no third-party audio licensing or checked-in binary assets.
-$tones = @{ completed = @(660,880); attention = @(880,660,880); blocked = @(330,220); error = @(220,220,220) }
-foreach ($name in $tones.Keys) {
+$assets = Join-Path (Split-Path $PSScriptRoot -Parent) 'assets/sfx'
+$manifest = Get-Content -LiteralPath (Join-Path $assets 'manifest.json') -Encoding UTF8 -Raw | ConvertFrom-Json
+$stateFile = Join-Path $Directory '.defaults.json'
+$previous = if (Test-Path -LiteralPath $stateFile) { Get-Content -LiteralPath $stateFile -Encoding UTF8 -Raw | ConvertFrom-Json } else { $null }
+$hashes = @{}
+$backup = Join-Path $Directory ('backups/' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
+foreach ($sound in $manifest.sounds) {
+    $name = $sound.event
+    $source = Join-Path $assets $sound.file
+    $sourceHash = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash
+    if ($sourceHash -ne $sound.sha256) { throw "Bundled SFX hash mismatch: $name" }
     $file = Join-Path $Directory ($name + '.wav')
-    if (Test-Path -LiteralPath $file) { continue } # Preserve customized SFX.
-    $rate = 22050
-    $samplesPerTone = [int]($rate * 0.13)
-    $gap = [int]($rate * 0.06)
-    $count = $tones[$name].Count * ($samplesPerTone + $gap)
-    $stream = [System.IO.MemoryStream]::new()
-    $writer = [System.IO.BinaryWriter]::new($stream)
-    try {
-        $writer.Write([System.Text.Encoding]::ASCII.GetBytes('RIFF'))
-        $writer.Write([int](36 + $count * 2))
-        $writer.Write([System.Text.Encoding]::ASCII.GetBytes('WAVEfmt '))
-        $writer.Write([int]16); $writer.Write([int16]1); $writer.Write([int16]1)
-        $writer.Write([int]$rate); $writer.Write([int]($rate * 2)); $writer.Write([int16]2); $writer.Write([int16]16)
-        $writer.Write([System.Text.Encoding]::ASCII.GetBytes('data')); $writer.Write([int]($count * 2))
-        foreach ($frequency in $tones[$name]) {
-            for ($i = 0; $i -lt $samplesPerTone; $i++) {
-                $fade = [Math]::Min(1, [Math]::Min($i / 220.0, ($samplesPerTone - $i) / 220.0))
-                $writer.Write([int16](5000 * $fade * [Math]::Sin(2 * [Math]::PI * $frequency * $i / $rate)))
-            }
-            for ($i = 0; $i -lt $gap; $i++) { $writer.Write([int16]0) }
+    $hashes[$name] = $sound.sha256
+    if (Test-Path -LiteralPath $file) {
+        $currentHash = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash
+        if ($currentHash -eq $sourceHash) { continue }
+        $previousHash = if ($previous) { $previous.hashes.$name } else { $null }
+        if (-not $ForceDefaults -and $currentHash -ne $sound.legacySha256 -and $currentHash -ne $previousHash) {
+            Write-Host "Preserved custom SFX: $name"
+            continue
         }
-        $writer.Flush()
-        [System.IO.File]::WriteAllBytes($file, $stream.ToArray())
-    } finally { $writer.Dispose(); $stream.Dispose() }
+        New-Item -ItemType Directory -Path $backup -Force | Out-Null
+        Copy-Item -LiteralPath $file -Destination (Join-Path $backup ($name + '.wav'))
+    }
+    Copy-Item -LiteralPath $source -Destination $file -Force
+    Write-Host "Applied ElevenLabs SFX: $name"
 }
+$state = @{ version = $manifest.version; hashes = $hashes } | ConvertTo-Json -Depth 4
+[System.IO.File]::WriteAllText([System.IO.Path]::GetFullPath($stateFile), $state, [System.Text.UTF8Encoding]::new($false))

@@ -55,7 +55,7 @@ ARM64 Windows에서는 `pipeline.ps1 -Runtime win-arm64 -Install`을 사용하�
 | 위치 | 변경 |
 |---|---|
 | `%LOCALAPPDATA%/AgentTerminalNotifier/bin/` | helper와 실행 의존성 복사 |
-| `%LOCALAPPDATA%/AgentTerminalNotifier/sounds/` | 기본 WAV 4개 생성; 기존 파일은 보존 |
+| `%LOCALAPPDATA%/AgentTerminalNotifier/sounds/` | ElevenLabs WAV 4개 설치; 이전 기본 톤은 백업 후 교체, 사용자 WAV는 보존 |
 | `%LOCALAPPDATA%/AgentTerminalNotifier/backups/` | 설정 원본 + 복구 manifest |
 | 사용자 VSCode 확장 | `local-tools.agent-terminal-notifier` 설치 |
 | `HKCU/Software/Classes/agent-terminal-notifier` | 알림 클릭용 URL protocol |
@@ -114,7 +114,11 @@ $notifier = Join-Path $env:LOCALAPPDATA 'AgentTerminalNotifier/bin/AgentTerminal
 }
 ```
 
-기본 소리는 직접 생성한 짧은 톤입니다. WAV가 없거나 유효하지 않으면 시스템 소리로 대체합니다. 작업표시줄은 해당 창이 비활성일 때 5회 점멸합니다. 같은 세션·이벤트는 10초 동안 중복을 억제하고, Codex는 턴 ID로도 구분합니다.
+기본 소리는 ElevenLabs로 생성한 SFX 4종입니다. 무음 제거·주파수 정리·압축·음량 정규화·짧은 페이드를 적용하고, 재생용 44.1kHz/mono/16-bit PCM WAV로 배포합니다. 평균 음량은 약 -16~-17.2dBFS이며 피크 여유를 유지합니다. WAV가 없거나 유효하지 않으면 시스템 소리로 대체합니다. 작업표시줄은 해당 창이 비활성일 때 5회 점멸합니다. 같은 세션·이벤트는 10초 동안 중복을 억제하고, Codex는 턴 ID로도 구분합니다.
+
+`assets/sfx/manifest.json`에 생성 프롬프트·원본 경로·최적화 필터·음량 측정·SHA-256을 기록했습니다. 원본 MP3와 최적화 WAV를 Git에 포함하므로 일반 설치는 ElevenLabs API나 FFmpeg를 호출하지 않습니다. 제작자가 원본에서 다시 최적화할 때만 FFmpeg 설치 후 `node Windows/scripts/optimize-sfx.cjs`를 실행합니다.
+
+설치는 이전 기본 톤의 해시와 `.defaults.json`의 관리 해시를 확인해 기본 파일만 갱신합니다. 교체 전 WAV는 `sounds/backups/`에 남기며 사용자 WAV와 별도 `agentNotifier.soundDirectory` 설정은 유지합니다. 이후 알림부터 새 소리를 읽으므로 SFX만 갱신할 때 VSCode 재로드는 필요하지 않습니다.
 
 ## 진단과 제한
 

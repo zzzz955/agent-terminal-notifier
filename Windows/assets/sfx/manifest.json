@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "provider": "ElevenLabs",
+  "generatedAt": "2026-09-29",
+  "generation": {
+    "format": "mp3_44100_128",
+    "loop": false
+  },
+  "optimization": {
+    "sampleRate": 44100,
+    "channels": 1,
+    "bitsPerSample": 16,
+    "loudnessLufs": -14,
+    "targetRmsDb": -16,
+    "truePeakDb": -1.5,
+    "filter": "silenceremove=start_periods=1:start_threshold=-50dB:start_duration=0.01,areverse,silenceremove=start_periods=1:start_threshold=-50dB:start_duration=0.01,areverse,highpass=f=180,lowpass=f=8000,acompressor=threshold=0.125:ratio=3:attack=5:release=80:makeup=2,loudnorm=I=-14:TP=-1.5:LRA=3,aresample=44100,afade=t=in:st=0:d=0.005,areverse,afade=t=in:st=0:d=0.025,areverse"
+  },
+  "sounds": [
+    {
+      "event": "completed",
+      "duration": 1.1,
+      "prompt": "A crisp, clearly audible desktop task-complete notification. Three bright rising marimba and glass notes ending in a satisfying resolved chime. Firm attack, present midrange that cuts through laptop speakers, warm body, short clean tail. Professional modern software UI, noticeable but pleasant. No speech, no music bed, no ambience, no hiss, no sub bass, no piercing shrill frequencies. Starts immediately. Exactly one notification.",
+      "source": "source/completed/sfx_A_cri_20260929_005836.mp3",
+      "file": "optimized/completed.wav",
+      "legacySha256": "604D7B905CC3103ADE5AB370A3231716EEC7199328839836A3C255A099CD6414",
+      "sha256": "ea9b295bb74a8beb2222cb954f34237476e5c6368d4ce868a0b559142f9f80b9",
+      "metrics": {
+        "duration": 0.526734693877551,
+        "rmsDb": -17.224421481034703,
+        "peakDb": -1.4999483342019322
+      }
+    },
+    {
+      "event": "attention",
+      "duration": 1.4,
+      "prompt": "Clear desktop notification requesting human approval or input. Two distinct double-note bell pulses, slightly insistent, with firm rounded attack and rich midrange body. Audible on laptop speakers, professional modern UI, noticeable without being startling. Short pause between pulses, short dry tail. No voice, background music, ambience, hiss, sub bass, or harsh siren. Starts immediately. One notification.",
+      "source": "source/attention/sfx_Clear_20260929_005853.mp3",
+      "file": "optimized/attention.wav",
+      "legacySha256": "D09B43FEE1A2C5F5D1883AC0237386819BE0931BE26ABFCA841865E39A87765F",
+      "sha256": "127bb7aec4ea6c11afcbfb2d987434113ac68f249100966eb84511e7dd01e6e9",
+      "metrics": {
+        "duration": 0.5468707482993197,
+        "rmsDb": -15.999995722012393,
+        "peakDb": -4.825379710801689
+      }
+    },
+    {
+      "event": "blocked",
+      "duration": 1.1,
+      "prompt": "A clearly audible desktop action-blocked notification. Two short descending wooden and metallic knocks with a firm tonal body and decisive muted low-mid chime finish. A recognizable negative UI cue, authoritative but not aggressive. Present midrange audible through laptop speakers, dry close sound, immediate attack and short tail. No voice, no music, no ambience, no hiss, no sub bass, no loud impact or siren. Exactly one notification.",
+      "source": "source/blocked/sfx_A_cle_20260929_005838.mp3",
+      "file": "optimized/blocked.wav",
+      "legacySha256": "817D7FC1FDCDE8C5684EE3FEA559890DF20FA5644ABBFBFB9A5A5D620AA22F8B",
+      "sha256": "7fd50b3329af92ab79af2aec83b16c8e0c9b1c1ef7afb394783eafe991e76071",
+      "metrics": {
+        "duration": 0.25952380952380955,
+        "rmsDb": -15.999996505745637,
+        "peakDb": -3.1750995283718186
+      }
+    },
+    {
+      "event": "error",
+      "duration": 1.6,
+      "prompt": "Loud, clean electronic error alert for a desktop app. Three clearly separated buzzer-like bell notes, descending in pitch, strong midrange and decisive attack, audible on a laptop. A short urgent warning that ends cleanly. Dry studio recording, no speech or background music. The sound begins immediately and lasts about one second.",
+      "source": "source/error/sfx_Loud,_20260929_010029.mp3",
+      "file": "optimized/error.wav",
+      "legacySha256": "EDD3E9F9FDEC55DCDBE7B94DA4F2687B4B8AE306E1637F8159EDA42065B47A83",
+      "sha256": "f278de1e193d711060970897bea85866331ea0e0877aa4be09fa45de751d1848",
+      "metrics": {
+        "duration": 0.36585034013605444,
+        "rmsDb": -16.000003929604063,
+        "peakDb": -5.405657322752776
+      }
+    }
+  ]
+}
