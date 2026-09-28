@@ -8,7 +8,7 @@ $null = Get-StableVersion $package.version
 & (Join-Path $PSScriptRoot 'scripts/pipeline.ps1') -Runtime $Runtime
 $build = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'dist/build.json') -Encoding UTF8 -Raw | ConvertFrom-Json
 $stage = Join-Path $PSScriptRoot ('dist/release-stage-' + [Guid]::NewGuid())
-New-Item -ItemType Directory -Path "$stage/scripts","$stage/extension/node_modules","$stage/assets/sfx","$stage/dist" -Force | Out-Null
+New-Item -ItemType Directory -Path "$stage/extension/node_modules","$stage/assets/sfx","$stage/dist" -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'scripts') -Destination $stage -Recurse
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'extension/package.json') -Destination "$stage/extension"
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'extension/node_modules/smol-toml') -Destination "$stage/extension/node_modules" -Recurse
