@@ -1,9 +1,9 @@
 @echo off
 setlocal
 chcp 65001 >nul
-echo Agent Terminal Notifier - Build, Verify and Install
+echo Agent Terminal Notifier - Install or Update Latest Release
 echo.
-powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\pipeline.ps1" -Install %*
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\bootstrap.ps1" -SourceRoot "%~dp0." %*
 set "pipelineExit=%ERRORLEVEL%"
 echo.
 if "%pipelineExit%"=="0" (

@@ -21,7 +21,8 @@ Claude Code hook ──────────────┼→ Windows helper
 
 - Windows 10 **2004 / build 19041 이상**, 또는 Windows 11.
 - 로컬 VSCode Stable (`code.cmd`가 PATH에 있어야 함), VSCode 1.95 이상.
-- Node.js **22 이상** 및 npm, **.NET SDK 8 이상**. 설치 시 npm/NuGet 다운로드를 위한 인터넷 필요.
+- Node.js **22 이상**. 릴리즈 설치·업데이트에는 npm/.NET SDK가 필요 없습니다.
+- 로컬 빌드·릴리즈 제작 시 npm과 **.NET SDK 8 이상**, npm/NuGet 다운로드를 위한 인터넷 필요.
 - Windows PowerShell 5.1 또는 PowerShell 7.
 - Codex CLI **0.157.1**, Claude Code **2.1.283** 설정 스키마를 기준으로 작성. 오래된 버전은 먼저 업데이트하세요.
 
@@ -29,9 +30,19 @@ Claude Code hook ──────────────┼→ Windows helper
 
 ## 빌드 → 검증 → 설치
 
-**`Windows/apply.bat`를 더블클릭하면 빌드·검증·설치까지 실행합니다.** 어느 디렉터리에서 실행해도 BAT 파일 위치를 기준으로 파이프라인을 찾으며, 완료/실패 후 창이 유지됩니다. 관리자 권한은 필요하지 않습니다.
+**`Windows/apply.bat`를 더블클릭하면 최신 안정 릴리즈를 설치·업데이트합니다.** 어느 디렉터리에서 실행해도 BAT 파일 위치를 기준으로 파이프라인을 찾으며, 완료/실패 후 창이 유지됩니다. 관리자 권한은 필요하지 않습니다.
 
-ARM64 PC에서는 저장소 루트에서 `Windows\apply.bat -Runtime win-arm64`를 실행하세요.
+`Windows/release.json`의 `repository` → 기존 설치 기록 → GitHub `origin` 순으로 저장소를 찾습니다. 초기에는 `origin`이 없으므로 로컬 빌드·검증·설치로 동작합니다. GitHub에 올린 뒤 `origin`을 등록하거나 `repository`에 `OWNER/REPO`를 지정하세요. 설정한 저장소에 접근 가능한 릴리즈가 없으면 기존 설치를 유지하며, 신규 설치는 중단합니다. 비공개 저장소는 Releases 읽기 권한의 `GH_TOKEN` 또는 `GITHUB_TOKEN` 환경 변수를 사용합니다.
+
+CPU 아키텍처는 자동 감지합니다. 명시하려면 `Windows\apply.bat -Runtime win-arm64`를 사용하세요. 로컬 체크아웃을 빌드하여 적용하려면 **`Windows\apply.bat -Local`**을 실행하세요.
+
+업데이트 규칙:
+
+- 안정 버전 `vMAJOR.MINOR.PATCH`를 숫자로 비교합니다. draft/prerelease는 제외합니다.
+- 같은 버전·같은 아키텍처·같은 저장소이면 재설치하지 않습니다. 다운그레이드는 거부합니다.
+- ZIP은 GitHub Release asset의 SHA-256 digest로 검증하고, 내부 manifest의 모든 파일 해시·버전·아키텍처·경로도 검증합니다. 동일 버전의 digest 변경은 오류로 처리하므로 새 패치 버전을 발행하세요.
+- 다운로드·검증 실패 시 기존 설치에 손대지 않습니다. 설치 단계 실패 시 백업으로 helper·SFX·설정·확장을 복구하며, 복구 실패 시 수동 복구용 백업 경로를 출력합니다.
+- 성공할 때만 `installed.json`을 갱신하고 업데이터도 교체합니다. 다음 실행은 설치된 최신 업데이터를 사용하므로 이전 체크아웃의 BAT도 계속 사용할 수 있습니다.
 
 저장소 루트에서:
 
@@ -57,6 +68,9 @@ ARM64 Windows에서는 `pipeline.ps1 -Runtime win-arm64 -Install`을 사용하�
 | `%LOCALAPPDATA%/AgentTerminalNotifier/bin/` | helper와 실행 의존성 복사 |
 | `%LOCALAPPDATA%/AgentTerminalNotifier/sounds/` | ElevenLabs WAV 4개 설치; 이전 기본 톤은 백업 후 교체, 사용자 WAV는 보존 |
 | `%LOCALAPPDATA%/AgentTerminalNotifier/backups/` | 설정 원본 + 복구 manifest |
+| `%LOCALAPPDATA%/AgentTerminalNotifier/installed.json` | 설치 버전·아키텍처·릴리즈 digest·저장소 기록 |
+| `%LOCALAPPDATA%/AgentTerminalNotifier/updater/` | 다음 실행에서 사용하는 최신 업데이터 |
+| `%LOCALAPPDATA%/AgentTerminalNotifier/updates/` | 다운로드 및 검증한 릴리즈 패키지 |
 | 사용자 VSCode 확장 | `local-tools.agent-terminal-notifier` 설치 |
 | `HKCU/Software/Classes/agent-terminal-notifier` | 알림 클릭용 URL protocol |
 | Windows 알림 앱 등록 | Microsoft notifications toolkit의 사용자 앱 등록 |
@@ -67,6 +81,29 @@ ARM64 Windows에서는 `pipeline.ps1 -Runtime win-arm64 -Install`을 사용하�
 `CODEX_HOME`, `CLAUDE_CONFIG_DIR` 환경 변수가 있으면 그 경로를 사용합니다. 기존 모델·권한·MCP·사용자 훅은 보존합니다. TOML은 주석을 보존하며 필요한 줄만 수정하고, JSON은 의미를 보존하여 재포맷합니다. 기존 `notify`가 있으면 원래 명령/인자를 보관한 `fanout`으로 기존 명령과 새 알림을 함께 실행합니다. 제거 시 원래 명령을 복원합니다. 기존 notify도 별도 소리를 재생한다면 두 소리가 들릴 수 있습니다. 명시적으로 꺼둔 Codex 훅이나 지원하지 않는 설정 형식은 **설정 변경 전 preflight에서 중단**합니다. 반복 설치로 훅이 중복되지 않습니다.
 
 설치 후 **모든 VSCode 창을 Reload Window**하고 Codex/Claude 세션을 다시 시작하세요. Codex가 신규 훅 신뢰 검토를 표시하면 내용을 확인하고 허용해야 실행됩니다. 설치 스크립트는 신뢰 검토를 우회하지 않습니다.
+
+## GitHub 릴리즈 제작
+
+제품 버전의 기준은 `Windows/extension/package.json`입니다. 다음 릴리즈에서는 `npm.cmd --prefix Windows/extension version 0.2.1 --no-git-tag-version`처럼 버전을 올리고, 코드와 lockfile을 함께 커밋하세요. 같은 버전의 asset을 교체하지 마세요.
+
+저장소 루트에서 다음 명령으로 빌드·검증·배포용 ZIP을 생성합니다. **사용자 설정 설치와 GitHub 업로드는 수행하지 않습니다.**
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Windows\release.ps1
+# ARM64 패키지는 ARM64 Windows에서 생성·검증
+# powershell -NoProfile -ExecutionPolicy Bypass -File .\Windows\release.ps1 -Runtime win-arm64
+```
+
+`Windows/dist/releases/v0.2.0/`에 ZIP과 `.sha256`이 생성됩니다. ZIP에는 빌드된 helper·VSIX·기본 SFX·설정 도구·업데이터·파일 해시 manifest가 포함됩니다. 소스 변경사항을 먼저 커밋해야 패키지의 `sourceCommit`이 실제 릴리즈 커밋을 가리킵니다.
+
+GitHub 저장소를 만든 뒤 `git remote add origin https://github.com/OWNER/REPO.git`으로 연결하고 코드를 push하세요. GitHub Releases에서 **패키지와 같은 `v0.2.0` 태그**로 릴리즈를 만들고 다음 두 파일을 첨부하여 정식 릴리즈로 게시하세요.
+
+- `agent-terminal-notifier-windows-win-x64.zip`
+- `agent-terminal-notifier-windows-win-x64.zip.sha256`
+
+ARM64를 지원할 때는 같은 릴리즈에 `agent-terminal-notifier-windows-win-arm64.zip`과 대응 `.sha256`도 첨부합니다. 해당 아키텍처 asset이 없으면 설치를 중단합니다. 업데이터는 검증 기준으로 GitHub API의 digest를 사용하며, 별도 `.sha256`은 사람이 확인하기 위한 산출물입니다.
+
+게시 후 BAT 실행 → 업데이트 설치 → VSCode Reload/에이전트 재시작 → BAT 재실행 시 `Already up to date`가 출력되는지 확인하세요. 아직 GitHub 저장소와 게시된 릴리즈가 없는 상태에서는 원격 다운로드 실검증을 할 수 없습니다.
 
 ## 직접 테스트: 먼저 가짜 이벤트, 다음 실제 에이전트
 

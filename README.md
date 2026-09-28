@@ -4,7 +4,9 @@ Codex CLI / Claude Code의 응답 완료·승인 대기·훅 차단을 알리고
 
 현재 구현은 **Windows 10/11 + 로컬 VSCode 통합 터미널** 전용입니다. 설치·빌드·검증·제거 절차는 [Windows/README.md](Windows/README.md)를 참조하세요.
 
-**바로 적용:** [Windows/apply.bat](Windows/apply.bat)를 더블클릭하면 빌드·검증·설치까지 실행합니다. 결과를 확인할 수 있도록 실행 후 창이 유지됩니다.
+**설치·업데이트:** [Windows/apply.bat](Windows/apply.bat)를 더블클릭하면 GitHub의 최신 안정 릴리즈를 확인하고 필요한 경우 설치합니다. `origin`이 없는 초기 개발 환경에서는 로컬 빌드·검증·설치를 실행합니다. 결과를 확인할 수 있도록 실행 후 창이 유지됩니다.
+
+릴리즈 제작은 [Windows/release.ps1](Windows/release.ps1), 배포·버전 관리 방법은 [Windows/README.md](Windows/README.md)를 참조하세요.
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\Windows\scripts\pipeline.ps1

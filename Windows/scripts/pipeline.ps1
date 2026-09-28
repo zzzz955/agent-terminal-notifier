@@ -5,6 +5,7 @@ $ErrorActionPreference = 'Stop'
 $windowsRoot = Split-Path $PSScriptRoot -Parent
 $extensionRoot = Join-Path $windowsRoot 'extension'
 $dist = Join-Path $windowsRoot 'dist'
+$package = Get-Content -LiteralPath (Join-Path $extensionRoot 'package.json') -Encoding UTF8 -Raw | ConvertFrom-Json
 function Invoke-Checked([string]$Executable, [string[]]$Arguments) {
     & $Executable @Arguments | Out-Host
     if ($LASTEXITCODE -ne 0) { throw "$Executable failed (exit $LASTEXITCODE)." }
@@ -13,7 +14,7 @@ if ($env:OS -ne 'Windows_NT') { throw 'This pipeline supports Windows only.' }
 foreach ($tool in @('node','npm.cmd','dotnet')) { if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) { throw "$tool is required. See Windows/README.md." } }
 New-Item -ItemType Directory -Path $dist -Force | Out-Null
 $syntaxFailures = @()
-Get-ChildItem -LiteralPath $PSScriptRoot,(Join-Path $windowsRoot 'examples') -Filter '*.ps1' | ForEach-Object {
+Get-ChildItem -LiteralPath $PSScriptRoot,$windowsRoot,(Join-Path $windowsRoot 'examples') -Filter '*.ps1' | ForEach-Object {
     $parseTokens = $null; $parseErrors = $null
     [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$parseTokens, [ref]$parseErrors) | Out-Null
     $syntaxFailures += $parseErrors
@@ -25,10 +26,12 @@ Push-Location $extensionRoot
 try {
     Invoke-Checked 'npm.cmd' @('ci','--no-fund','--no-audit')
     Invoke-Checked 'npm.cmd' @('test')
-    Invoke-Checked 'dotnet' @('publish', (Join-Path $windowsRoot 'notifier/AgentTerminalNotifier.csproj'), '-c','Release','-r',$Runtime,'--self-contained','true','-p:RestoreLockedMode=true','-o',(Join-Path $dist 'bin'))
+    Invoke-Checked 'dotnet' @('publish', (Join-Path $windowsRoot 'notifier/AgentTerminalNotifier.csproj'), '-c','Release','-r',$Runtime,'--self-contained','true','-p:RestoreLockedMode=true', ('-p:Version=' + $package.version), '-o',(Join-Path $dist 'bin'))
     Invoke-Checked (Join-Path $dist 'bin/AgentTerminalNotifier.exe') @('self-test')
     Invoke-Checked 'node' @((Join-Path $windowsRoot 'scripts/integration-test.cjs'), (Join-Path $dist 'bin/AgentTerminalNotifier.exe'))
     Invoke-Checked 'npm.cmd' @('run','package')
 } finally { Pop-Location }
+$build = @{ version = $package.version; runtime = $Runtime; sourceCommit = (& git -C (Split-Path $windowsRoot -Parent) rev-parse HEAD) }
+[IO.File]::WriteAllText((Join-Path $dist 'build.json'), ($build | ConvertTo-Json), [Text.UTF8Encoding]::new($false))
 Write-Host "Build and automated checks passed: $dist"
 if ($Install) { & (Join-Path $PSScriptRoot 'install.ps1') }

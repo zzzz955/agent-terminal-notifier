@@ -2,7 +2,7 @@
   "name": "agent-terminal-notifier",
   "displayName": "Agent Terminal Notifier",
   "description": "Windows agent notifications that focus the originating terminal",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "local-tools",
   "engines": { "vscode": "^1.95.0" },
   "categories": ["Other"],
