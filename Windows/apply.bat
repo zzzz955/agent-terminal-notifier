@@ -1,5 +1,6 @@
 @echo off
 setlocal
+chcp 65001 >nul
 echo Agent Terminal Notifier - Build, Verify and Install
 echo.
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\pipeline.ps1" -Install %*

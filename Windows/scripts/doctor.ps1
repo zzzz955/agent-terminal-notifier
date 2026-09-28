@@ -1,4 +1,5 @@
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'console.ps1')
 $installRoot = Join-Path $env:LOCALAPPDATA 'AgentTerminalNotifier'
 Write-Host "Helper installed: $(Test-Path -LiteralPath (Join-Path $installRoot 'bin/AgentTerminalNotifier.exe'))"
 Write-Host "Protocol registered: $(Test-Path -LiteralPath 'HKCU:/Software/Classes/agent-terminal-notifier/shell/open/command')"

@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param()
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'console.ps1')
 $windowsRoot = Split-Path $PSScriptRoot -Parent
 $installRoot = Join-Path $env:LOCALAPPDATA 'AgentTerminalNotifier'
 $exe = Join-Path $installRoot 'bin/AgentTerminalNotifier.exe'

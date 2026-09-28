@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param([switch]$Install, [ValidateSet('win-x64','win-arm64')][string]$Runtime = 'win-x64')
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'console.ps1')
 $windowsRoot = Split-Path $PSScriptRoot -Parent
 $extensionRoot = Join-Path $windowsRoot 'extension'
 $dist = Join-Path $windowsRoot 'dist'
