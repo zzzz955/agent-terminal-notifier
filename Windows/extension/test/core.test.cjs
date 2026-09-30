@@ -16,5 +16,8 @@ test('deduplicates a turn but keeps different terminals, sources and states inde
   assert.ok(d.accept({ ...message, sessionId: 'two' }, 1));
   assert.ok(d.accept({ ...message, event: 'attention' }, 1));
   assert.ok(d.accept({ ...message, source: 'claude' }, 1));
+  assert.equal(validMessage({ ...message, source: 'grok' }, token), true);
+  assert.equal(validMessage({ ...message, source: 'gemini' }, token), true);
+  assert.equal(validMessage({ ...message, source: 'copilot' }, token), true);
   assert.ok(d.accept(message, 10001));
 });

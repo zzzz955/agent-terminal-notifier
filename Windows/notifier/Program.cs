@@ -76,20 +76,38 @@ internal static class Program
         ToastNotificationManagerCompat.Uninstall();
     }
 
+    internal static readonly string[] Sources = ["codex", "claude", "grok", "gemini", "copilot", "hook", "test"];
+
     internal static string? NormalizeEvent(string requested, JsonElement input)
     {
         if (requested != "auto")
             return new[] { "completed", "attention", "blocked", "error" }.Contains(requested) ? requested : throw new ArgumentException("Unknown event");
-        return Get(input, "hook_event_name") switch
+        if (Field(input, "subagentType", "subagent_type").Length > 0) return null;
+        string reason = Field(input, "reason");
+        return Field(input, "hook_event_name", "hookEventName") switch
         {
-            "Stop" => "completed",
-            "StopFailure" => "error",
-            "Notification" => Get(input, "notification_type") is "permission_prompt" or "elicitation_dialog" or "agent_needs_input" or "worker_permission_prompt" ? "attention" : null,
+            "Stop" or "stop" => reason is "channel_closed" or "shutdown" ? null : "completed",
+            "StopFailure" or "errorOccurred" => "error",
+            "StopCancelled" => reason == "user_interrupt" ? "blocked" : null,
+            "Notification" or "notification" => IsAttention(Field(input, "notification_type", "notificationType")) ? "attention" : null,
+            "AfterAgent" => "completed",
             _ => null
         };
     }
 
+    internal static bool IsAttention(string type) => type is "permission_prompt" or "elicitation_dialog" or "agent_needs_input" or "worker_permission_prompt" or "ToolPermission";
+
     internal static string Get(JsonElement value, string name) => value.ValueKind == JsonValueKind.Object && value.TryGetProperty(name, out var p) && p.ValueKind == JsonValueKind.String ? p.GetString()! : "";
+
+    internal static string Field(JsonElement value, params string[] names)
+    {
+        foreach (string name in names)
+        {
+            string found = Get(value, name);
+            if (found.Length > 0) return found;
+        }
+        return "";
+    }
 
     private static string ReadInput()
     {
@@ -118,7 +136,7 @@ internal static class Program
     private static void Send(string[] args)
     {
         string source = args.ElementAtOrDefault(1) ?? "hook";
-        if (!new[] { "codex", "claude", "hook", "test" }.Contains(source)) throw new ArgumentException("Unknown source");
+        if (!Sources.Contains(source)) throw new ArgumentException("Unknown source");
         string requested = args.ElementAtOrDefault(2) ?? "blocked";
         string raw = args.ElementAtOrDefault(3)?.StartsWith('{') == true ? args[3] : Console.IsInputRedirected ? ReadInput() : "{}";
         using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(raw) ? "{}" : raw);
@@ -147,7 +165,7 @@ internal static class Program
             var message = new
             {
                 action = "notify", token = candidate.route.Token, sessionId = candidate.terminal.SessionId, source, @event = ev,
-                eventId = Get(doc.RootElement, "turn-id") is string id && id.Length > 0 ? id : Get(doc.RootElement, "turn_id"),
+                eventId = Field(doc.RootElement, "turn-id", "turn_id", "turnId", "promptId"),
                 cwd = Get(doc.RootElement, "cwd") is string cwd && cwd.Length > 0 ? cwd : Environment.CurrentDirectory
             };
             try
@@ -234,16 +252,28 @@ internal static class Program
         static void Check(bool pass, string name) { if (!pass) throw new Exception("Self-test failed: " + name); }
         using var idle = JsonDocument.Parse("{\"hook_event_name\":\"Notification\",\"notification_type\":\"idle_prompt\"}");
         using var permission = JsonDocument.Parse("{\"hook_event_name\":\"Notification\",\"notification_type\":\"permission_prompt\"}");
+        using var teardown = JsonDocument.Parse("{\"hook_event_name\":\"Stop\",\"reason\":\"channel_closed\"}");
+        using var grokStop = JsonDocument.Parse("{\"hookEventName\":\"stop\",\"hook_event_name\":\"Stop\",\"reason\":\"end_turn\"}");
+        using var child = JsonDocument.Parse("{\"hook_event_name\":\"Stop\",\"subagentType\":\"explore\"}");
+        using var geminiPermission = JsonDocument.Parse("{\"hook_event_name\":\"Notification\",\"notification_type\":\"ToolPermission\"}");
+        using var interrupted = JsonDocument.Parse("{\"hook_event_name\":\"StopCancelled\",\"reason\":\"user_interrupt\"}");
+        using var geminiDone = JsonDocument.Parse("{\"hook_event_name\":\"AfterAgent\"}");
         Check(NormalizeEvent("auto", idle.RootElement) == null, "idle filtering");
         Check(NormalizeEvent("auto", permission.RootElement) == "attention", "permission mapping");
         Check(NormalizeEvent("blocked", idle.RootElement) == "blocked", "explicit blocked");
+        Check(NormalizeEvent("auto", teardown.RootElement) == null, "session teardown filtering");
+        Check(NormalizeEvent("auto", grokStop.RootElement) == "completed", "grok turn completion");
+        Check(NormalizeEvent("auto", child.RootElement) == null, "subagent filtering");
+        Check(NormalizeEvent("auto", geminiPermission.RootElement) == "attention", "gemini permission");
+        Check(NormalizeEvent("auto", interrupted.RootElement) == "blocked", "grok interrupt");
+        Check(NormalizeEvent("auto", geminiDone.RootElement) == "completed", "gemini completion");
         var alert = new Alert { Pipe = "agent-notifier-" + Guid.NewGuid(), Token = new string('a', 64), SessionId = Guid.NewGuid().ToString(), Title = "한글 & <project> \"test\"", Event = "completed" };
         Check(ValidPipe(alert.Pipe) && !ValidPipe("agent-notifier-../../other"), "pipe validation");
         var doc = new System.Xml.XmlDocument(); doc.LoadXml(ToastXml(alert));
         Check(doc.SelectSingleNode("//text")!.InnerText == alert.Title, "toast escaping");
         Check(doc.DocumentElement!.GetAttribute("launch") == FocusUri(alert).AbsoluteUri, "click activation");
         Check(Native.Ancestors(Environment.ProcessId).Count >= 2, "native process ancestry");
-        Console.WriteLine("Notifier self-tests passed (6 checks; no settings changed).");
+        Console.WriteLine("Notifier self-tests passed (13 checks; no settings changed).");
     }
 }
 

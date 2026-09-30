@@ -1,5 +1,6 @@
 export const events = ['completed', 'attention', 'blocked', 'error'] as const;
 export type Event = typeof events[number];
+export const sources = ['codex', 'claude', 'grok', 'gemini', 'copilot', 'test', 'hook'] as const;
 export interface Message {
   token: string;
   action: 'notify' | 'focus';
@@ -16,7 +17,7 @@ export function validMessage(value: unknown, token: string): value is Message {
   if (m.token !== token || typeof m.sessionId !== 'string' || m.sessionId.length > 100) return false;
   if (m.action === 'focus') return true;
   return m.action === 'notify' && events.includes(m.event as Event) &&
-    ['codex', 'claude', 'test', 'hook'].includes(m.source as string) &&
+    sources.includes(m.source as typeof sources[number]) &&
     (m.cwd === undefined || (typeof m.cwd === 'string' && m.cwd.length < 4096)) &&
     (m.eventId === undefined || (typeof m.eventId === 'string' && m.eventId.length < 256));
 }

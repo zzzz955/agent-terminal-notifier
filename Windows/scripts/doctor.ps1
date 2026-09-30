@@ -7,8 +7,12 @@ if (Get-Command code.cmd -ErrorAction SilentlyContinue) {
     $extensions = & code.cmd --list-extensions
     Write-Host "Extension installed: $($extensions -contains 'local-tools.agent-terminal-notifier')"
 }
-foreach ($tool in @('codex','claude')) {
-    if (Get-Command $tool -ErrorAction SilentlyContinue) { & $tool --version | Out-Host }
+foreach ($tool in @('codex','claude','grok','gemini','copilot')) {
+    $cmd = Get-Command $tool -ErrorAction SilentlyContinue
+    if ($cmd) {
+        Write-Host "CLI ${tool}: $($cmd.Source)"
+        & $tool --version 2>&1 | Select-Object -First 1 | Out-Host
+    } else { Write-Host "CLI ${tool}: not installed" }
 }
 $routes = Join-Path $installRoot 'routes'
 if (Test-Path -LiteralPath $routes) {

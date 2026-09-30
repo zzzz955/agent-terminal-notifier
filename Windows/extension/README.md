@@ -1,6 +1,6 @@
 # Agent Terminal Notifier (Windows)
 
-Links Codex CLI / Claude Code notifications to the exact local VSCode terminal.
+Links Codex, Claude Code, Grok, Gemini CLI and GitHub Copilot CLI notifications to the exact local VSCode terminal.
 
 Install the Windows helper and hooks through the repository's
 `Windows/scripts/pipeline.ps1 -Install`, then reload VSCode and restart agents.
