@@ -19,7 +19,8 @@ for (const sound of manifest.sounds) {
   const metrics = analyzeWav(bytes);
   if (!Number.isFinite(metrics.rmsDb)) throw new Error('Generated SFX is silent: ' + sound.event);
   // Short transients can fall below LUFS gating; finish with bounded PCM gain.
-  const gain = Math.min(10 ** ((manifest.optimization.targetRmsDb - metrics.rmsDb) / 20),
+  const levelDb = sound.levelDb || 0;
+  const gain = Math.min(10 ** ((manifest.optimization.targetRmsDb + levelDb - metrics.rmsDb) / 20),
     10 ** ((manifest.optimization.truePeakDb - metrics.peakDb) / 20));
   for (let offset = metrics.dataOffset; offset < metrics.dataOffset + metrics.dataLength; offset += 2)
     bytes.writeInt16LE(Math.round(bytes.readInt16LE(offset) * gain), offset);

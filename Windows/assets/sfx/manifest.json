@@ -37,39 +37,41 @@
       "source": "source/attention/sfx_Clear_20260929_005853.mp3",
       "file": "optimized/attention.wav",
       "legacySha256": "D09B43FEE1A2C5F5D1883AC0237386819BE0931BE26ABFCA841865E39A87765F",
-      "sha256": "127bb7aec4ea6c11afcbfb2d987434113ac68f249100966eb84511e7dd01e6e9",
+      "sha256": "1308ae902e3303755048e5697765cf21ffb2d47c3ed65340b0cdb85a8b656e44",
       "metrics": {
-        "duration": 0.5468707482993197,
-        "rmsDb": -15.999995722012393,
-        "peakDb": -4.825379710801689
+        "duration": 0.4442857142857143,
+        "rmsDb": -17.25852903591308,
+        "peakDb": -1.4999483342019322
       }
     },
     {
       "event": "blocked",
+      "levelDb": 2,
       "duration": 1.1,
       "prompt": "A clearly audible desktop action-blocked notification. Two short descending wooden and metallic knocks with a firm tonal body and decisive muted low-mid chime finish. A recognizable negative UI cue, authoritative but not aggressive. Present midrange audible through laptop speakers, dry close sound, immediate attack and short tail. No voice, no music, no ambience, no hiss, no sub bass, no loud impact or siren. Exactly one notification.",
       "source": "source/blocked/sfx_A_cle_20260929_005838.mp3",
       "file": "optimized/blocked.wav",
       "legacySha256": "817D7FC1FDCDE8C5684EE3FEA559890DF20FA5644ABBFBFB9A5A5D620AA22F8B",
-      "sha256": "7fd50b3329af92ab79af2aec83b16c8e0c9b1c1ef7afb394783eafe991e76071",
+      "sha256": "f4117be6ea4604835734d0805a50588da76f9b03b18682d3cf05d90be9a77cd5",
       "metrics": {
-        "duration": 0.25952380952380955,
-        "rmsDb": -15.999996505745637,
-        "peakDb": -3.1750995283718186
+        "duration": 0.3854875283446712,
+        "rmsDb": -15.217803806217889,
+        "peakDb": -1.4999483342019322
       }
     },
     {
       "event": "error",
+      "levelDb": -4,
       "duration": 1.6,
       "prompt": "Loud, clean electronic error alert for a desktop app. Three clearly separated buzzer-like bell notes, descending in pitch, strong midrange and decisive attack, audible on a laptop. A short urgent warning that ends cleanly. Dry studio recording, no speech or background music. The sound begins immediately and lasts about one second.",
       "source": "source/error/sfx_Loud,_20260929_010029.mp3",
       "file": "optimized/error.wav",
       "legacySha256": "EDD3E9F9FDEC55DCDBE7B94DA4F2687B4B8AE306E1637F8159EDA42065B47A83",
-      "sha256": "f278de1e193d711060970897bea85866331ea0e0877aa4be09fa45de751d1848",
+      "sha256": "8db00a7629cce050070af331f010ce46c61a20930ea70bf42e07c145c60925e4",
       "metrics": {
-        "duration": 0.36585034013605444,
-        "rmsDb": -16.000003929604063,
-        "peakDb": -5.405657322752776
+        "duration": 0.3577097505668934,
+        "rmsDb": -19.99999306289422,
+        "peakDb": -9.348712880433265
       }
     }
   ]
