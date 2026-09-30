@@ -30,4 +30,4 @@ $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant
 [IO.File]::WriteAllText(($zip + '.sha256'), ($hash + '  ' + [IO.Path]::GetFileName($zip) + "`n"), [Text.UTF8Encoding]::new($false))
 $null = Expand-VerifiedPackage $zip (Join-Path $stage 'verified') $build.version $Runtime
 Write-Host "Release v$($build.version) ready: $out"
-Write-Host 'Upload ZIP and .sha256 to a published GitHub Release with the matching vX.Y.Z tag. Nothing was published by this script.'
+Write-Host 'Optional package only. apply.bat updates from the git repository and does not use this ZIP. Nothing was published by this script.'

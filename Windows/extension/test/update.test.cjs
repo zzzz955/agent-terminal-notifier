@@ -39,7 +39,9 @@ Reject { Get-StableVersion 'v0.2.0-beta.1' }
 Reject { Get-StableVersion '01.2.3' }
 $release = @{ tag_name = 'v0.2.0'; assets = @(@{name='agent-terminal-notifier-windows-win-x64.zip'; state='uploaded'; id=1; digest=('sha256:' + ('a' * 64))}) }
 Check ((Get-ReleaseAsset $release 'win-x64').id -eq 1) 'release asset'
-Reject { Get-ReleaseAsset $release 'win-arm64' }
+Check ($null -eq (Get-ReleaseAsset $release 'win-arm64')) 'missing architecture'
+$duplicate = @{ tag_name = 'v0.2.0'; assets = @($release.assets[0], $release.assets[0]) }
+Reject { Get-ReleaseAsset $duplicate 'win-x64' }
 $release.prerelease = $true
 Reject { Get-ReleaseAsset $release 'win-x64' }
 Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -78,6 +80,64 @@ Write-Output 'Updater checks passed.'
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
+test('repository sync follows the default branch and resets a dirty cache', { skip: process.platform !== 'win32' }, () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-sync-test-'));
+  const quote = value => "'" + value.replaceAll("'", "''") + "'";
+  const scripts = path.resolve(__dirname, '../../scripts');
+  const origin = path.join(root, 'origin');
+  const dest = path.join(root, 'cache');
+  const blocked = path.join(root, 'not-a-repo');
+  const script = `
+$ErrorActionPreference = 'Stop'
+$PSNativeCommandUseErrorActionPreference = $false
+. ${quote(path.join(scripts, 'update-core.ps1'))}
+function Check($value, $label) { if (-not $value) { throw $label } }
+function Reject([scriptblock]$action) { $rejected = $false; try { & $action | Out-Null } catch { $rejected = $true }; Check $rejected 'Expected rejection' }
+$origin = ${quote(origin)}
+$dest = ${quote(dest)}
+New-Item -ItemType Directory -Path $origin | Out-Null
+& git -C $origin init -b main
+if ($LASTEXITCODE -ne 0) { throw 'git init failed' }
+function Commit([string]$Message) {
+    & git -C $origin -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false add marker.txt
+    if ($LASTEXITCODE -ne 0) { throw 'git add failed' }
+    & git -C $origin -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false commit -m $Message
+    if ($LASTEXITCODE -ne 0) { throw 'git commit failed' }
+}
+[IO.File]::WriteAllText((Join-Path $origin 'marker.txt'), ('one' + [char]10))
+Commit 'first'
+$first = (& git -C $origin rev-parse HEAD).Trim()
+$head = Sync-RepositorySource 'fixture/notifier' $dest $origin
+Check (@($head).Count -eq 1) 'one commit value'
+Check ($head -match '^[0-9a-fA-F]{40}$') 'commit shape'
+Check ($head -eq $first) 'first commit'
+Check ((Get-Content -LiteralPath (Join-Path $dest 'marker.txt') -Raw).Trim() -eq 'one') 'first file'
+[IO.File]::WriteAllText((Join-Path $dest 'marker.txt'), ('dirty' + [char]10))
+[IO.File]::WriteAllText((Join-Path $origin 'marker.txt'), ('two' + [char]10))
+Commit 'second'
+$second = (& git -C $origin rev-parse HEAD).Trim()
+$head = Sync-RepositorySource 'fixture/notifier' $dest $origin
+Check (@($head).Count -eq 1) 'one updated commit'
+Check ($head -eq $second) 'second commit'
+Check ($head -ne $first) 'commit changed'
+Check ((Get-Content -LiteralPath (Join-Path $dest 'marker.txt') -Raw).Trim() -eq 'two') 'cache reset'
+Reject { Sync-RepositorySource 'fixture/notifier' $dest 'C:\no\such\remote' }
+New-Item -ItemType Directory -Path ${quote(blocked)} | Out-Null
+Reject { Sync-RepositorySource 'fixture/notifier' ${quote(blocked)} $origin }
+Check (Test-Path -LiteralPath ${quote(blocked)}) 'non-git checkout kept'
+Check (-not (Test-Path -LiteralPath ${quote(path.join(blocked, '.git'))})) 'non-git checkout not replaced'
+Reject { Sync-RepositorySource 'not a repo' ${quote(path.join(root, 'unused'))} '' }
+Write-Output 'Repository sync passed.'
+`;
+  const file = path.join(root, 'test.ps1');
+  fs.writeFileSync(file, script);
+  try {
+    const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', file], { encoding: 'utf8', windowsHide: true, timeout: 30000 });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.ok(result.stdout.includes('Repository sync passed.'));
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 test('failed Windows install restores existing helper, sounds, version and extension', { skip: process.platform !== 'win32' }, () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-rollback-test-'));
   const quote = value => "'" + value.replaceAll("'", "''") + "'";
@@ -106,6 +166,9 @@ $ErrorActionPreference = 'Stop'
 $env:LOCALAPPDATA = ${quote(path.join(root, 'local'))}
 $env:CODEX_HOME = ${quote(path.join(root, 'codex'))}
 $env:CLAUDE_CONFIG_DIR = ${quote(path.join(root, 'claude'))}
+$env:GROK_HOME = ${quote(path.join(root, 'grok'))}
+$env:GEMINI_CLI_HOME = ${quote(path.join(root, 'gemini'))}
+$env:COPILOT_HOME = ${quote(path.join(root, 'copilot'))}
 Add-Type -TypeDefinition 'public class FixtureHelper { public static int Main(string[] args) { return 0; } }' -OutputAssembly ${quote(path.join(candidate, 'dist/bin/AgentTerminalNotifier.exe'))} -OutputType ConsoleApplication
 $global:fixtureAttempts = 0
 function code.cmd {

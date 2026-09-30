@@ -49,9 +49,10 @@ function Get-ReleaseAsset($Release, [string]$Runtime) {
     if ($Release.draft -or $Release.prerelease) { throw 'Only published stable releases may be installed.' }
     $null = Get-StableVersion $Release.tag_name
     $name = "agent-terminal-notifier-windows-$Runtime.zip"
-    $matches = @($Release.assets | Where-Object { $_.name -eq $name -and $_.state -eq 'uploaded' })
-    if ($matches.Count -ne 1) { throw "Release asset missing or ambiguous: $name" }
-    $asset = $matches[0]
+    $found = @($Release.assets | Where-Object { $_.name -eq $name -and $_.state -eq 'uploaded' })
+    if ($found.Count -eq 0) { return $null }
+    if ($found.Count -gt 1) { throw "Release asset ambiguous: $name" }
+    $asset = $found[0]
     if ($asset.digest -notmatch '^sha256:([a-fA-F0-9]{64})$') { throw 'GitHub asset SHA-256 digest is missing; refusing an unverified download.' }
     if ([long]$asset.id -le 0) { throw 'Invalid release asset ID.' }
     return $asset
@@ -96,4 +97,46 @@ function Expand-VerifiedPackage([string]$Zip, [string]$Destination, [string]$Ver
     $build = Get-Content -LiteralPath (Join-Path $Destination 'dist/build.json') -Encoding UTF8 -Raw | ConvertFrom-Json
     if ((Get-StableVersion $build.version) -ne (Get-StableVersion $Version) -or $build.runtime -ne $Runtime) { throw 'Build version or architecture mismatch.' }
     return $manifest
+}
+
+function Invoke-Git([string]$RepositoryPath, [string[]]$GitArgs) {
+    $PSNativeCommandUseErrorActionPreference = $false
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    $output = & git -C $RepositoryPath @GitArgs 2>&1
+    $code = $LASTEXITCODE
+    $ErrorActionPreference = $previous
+    if ($code -ne 0) { throw "git $($GitArgs -join ' ') failed. Existing installation was not changed.`n$output" }
+}
+
+function Sync-RepositorySource([string]$Repository, [string]$Destination, [string]$RemoteUrl) {
+    $PSNativeCommandUseErrorActionPreference = $false
+    if (-not $RemoteUrl) {
+        if ($Repository -notmatch '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') { throw 'Release repository must be owner/repo on github.com.' }
+        $RemoteUrl = "https://github.com/$Repository.git"
+    }
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) { throw 'git is required to update from the repository. Existing installation was not changed.' }
+    if (Test-Path -LiteralPath $Destination) {
+        if (-not (Test-Path -LiteralPath (Join-Path $Destination '.git'))) { throw "Update checkout is not a git repository: $Destination" }
+        Invoke-Git $Destination @('remote','set-url','origin',$RemoteUrl)
+        Invoke-Git $Destination @('fetch','--prune','origin')
+    } else {
+        $parent = Split-Path $Destination -Parent
+        if ($parent) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
+        $previous = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        $clone = & git clone --origin origin $RemoteUrl $Destination 2>&1
+        $code = $LASTEXITCODE
+        $ErrorActionPreference = $previous
+        if ($code -ne 0) { throw "Could not clone the repository. Existing installation was not changed.`n$clone" }
+    }
+    Invoke-Git $Destination @('remote','set-head','origin','-a')
+    $remoteHead = @( & git -C $Destination symbolic-ref 'refs/remotes/origin/HEAD' ) | Where-Object { $_ -match '^refs/' } | Select-Object -Last 1
+    if ($LASTEXITCODE -ne 0 -or -not "$remoteHead".Trim()) { throw 'Could not resolve the repository default branch. Existing installation was not changed.' }
+    $remoteHead = "$remoteHead".Trim()
+    Invoke-Git $Destination @('-c','advice.detachedHead=false','checkout','--force',$remoteHead)
+    Invoke-Git $Destination @('reset','--hard',$remoteHead)
+    $commit = @( & git -C $Destination rev-parse 'HEAD' ) | Where-Object { $_ -match '^[0-9a-fA-F]{40}$' } | Select-Object -Last 1
+    if ($LASTEXITCODE -ne 0 -or -not "$commit".Trim()) { throw 'Could not read the fetched commit. Existing installation was not changed.' }
+    return "$commit".Trim()
 }

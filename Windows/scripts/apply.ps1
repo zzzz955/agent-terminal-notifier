@@ -10,34 +10,17 @@ $stateFile = Join-Path $installRoot 'installed.json'
 $installed = if (Test-Path -LiteralPath $stateFile) { Get-Content -LiteralPath $stateFile -Encoding UTF8 -Raw | ConvertFrom-Json } else { $null }
 $repository = Get-ReleaseRepository $SourceRoot $installed
 if ($Local -or -not $repository) {
-    if (-not $repository -and -not $Local) { Write-Host 'No GitHub origin configured. Building this local checkout. Add origin to enable release updates.' }
+    if (-not $repository -and -not $Local) { Write-Host 'No GitHub origin configured. Building this local checkout. Add origin to enable repository updates.' }
     & (Join-Path $SourceRoot 'scripts/pipeline.ps1') -Runtime $Runtime -Install
     return
 }
-Write-Host "Checking latest stable release: $repository"
-$release = Get-LatestRelease $repository
-if (-not $release) {
-    if ($installed) { Write-Host 'No accessible published release found. Keeping the existing installation.'; return }
-    throw 'No accessible published release found. Publish a release first, use GH_TOKEN for a private repository, or use apply.bat -Local.'
-}
-$asset = Get-ReleaseAsset $release $Runtime
-$hash = $asset.digest.Substring(7)
-$decision = Get-UpdateDecision $(if ($installed) { $installed.version } else { '' }) $release.tag_name $(if ($installed -and $installed.runtime -eq $Runtime -and $installed.repository -eq $repository) { $installed.artifactSha256 } else { '' }) $hash
-if ($decision -in @('current','keep-newer') -and $installed.runtime -eq $Runtime -and $installed.repository -eq $repository) {
-    Write-Host "Already up to date (installed $($installed.version), latest $($release.tag_name))."
+$cache = Join-Path $installRoot 'source'
+Write-Host "Fetching default branch: $repository"
+$commit = Sync-RepositorySource $repository $cache
+if ($installed -and $installed.runtime -eq $Runtime -and $installed.repository -eq $repository -and $installed.sourceCommit -and ($installed.sourceCommit -eq $commit)) {
+    Show-ApplySummary -Title 'Nothing changed' -Outcome unchanged -Commit $commit -Version $installed.version -Runtime $installed.runtime -Repository $repository -ConfigScript (Join-Path $SourceRoot 'scripts/config.cjs')
     return
 }
-if ($decision -eq 'keep-newer') { throw 'Latest release would downgrade this installation. Existing version retained.' }
-if (-not (Get-Command node -ErrorAction SilentlyContinue) -or -not (Get-Command code.cmd -ErrorAction SilentlyContinue)) { throw 'Node.js 22+ and VSCode code.cmd are required.' }
-$stage = Join-Path $installRoot ('updates/' + [Guid]::NewGuid().ToString())
-New-Item -ItemType Directory -Path $stage -Force | Out-Null
-$zip = Join-Path $stage $asset.name
-Write-Host "Downloading $($release.tag_name) ($Runtime)"
-try {
-    Invoke-WebRequest -UseBasicParsing -Uri "https://api.github.com/repos/$repository/releases/assets/$($asset.id)" -Headers (Get-GitHubHeaders 'application/octet-stream') -OutFile $zip -TimeoutSec 300
-} catch { throw 'Release download failed. Existing installation was not changed.' }
-Assert-FileDigest $zip $hash
-$bundle = Join-Path $stage 'package'
-$null = Expand-VerifiedPackage $zip $bundle $release.tag_name $Runtime
-Write-Host 'Release archive and all bundled file hashes verified.'
-& (Join-Path $bundle 'scripts/install.ps1') -Repository $repository -ArtifactSha256 $hash
+$pipeline = Join-Path $cache 'Windows/scripts/pipeline.ps1'
+if (-not (Test-Path -LiteralPath $pipeline)) { throw 'Fetched repository has no Windows/scripts/pipeline.ps1. Existing installation was not changed.' }
+& $pipeline -Runtime $Runtime -Install
