@@ -66,7 +66,14 @@ try {
     Copy-Item -LiteralPath $vsix -Destination (Join-Path $installRoot 'extension.vsix') -Force
     $state = @{ version = $build.version; runtime = $build.runtime; repository = $Repository; artifactSha256 = $ArtifactSha256; sourceCommit = $build.sourceCommit; installedAt = [DateTimeOffset]::Now.ToString('O') }
     [IO.File]::WriteAllText($stateFile, ($state | ConvertTo-Json), [Text.UTF8Encoding]::new($false))
-    Write-Host "Installed $($build.version). Reload VSCode and restart agents. Rollback backup: $backup"
+    $changedAgents = @()
+    $manifestPath = Join-Path $configBackup 'manifest.json'
+    if (Test-Path -LiteralPath $manifestPath) {
+        foreach ($entry in (Get-Content -LiteralPath $manifestPath -Encoding UTF8 -Raw | ConvertFrom-Json)) {
+            if ($entry.agent) { $changedAgents += $entry.agent }
+        }
+    }
+    Show-ApplySummary -Title "Installed $($build.version)" -Outcome changed -Commit $build.sourceCommit -Version $build.version -Runtime $build.runtime -Repository $Repository -ChangedAgents $changedAgents -ConfigScript (Join-Path $PSScriptRoot 'config.cjs') -PreviousCommit $(if ($previous) { $previous.sourceCommit } else { '' }) -PreviousVersion $(if ($previous) { $previous.version } else { '' }) -Backup $backup
 } catch {
     $failure = $_
     if (-not $snapshotReady) { throw }
